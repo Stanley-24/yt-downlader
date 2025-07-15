@@ -5,6 +5,7 @@ import os
 from youtube_downloader import download_youtube_video
 import yt_dlp
 import asyncio
+from typing import List
 main_loop = asyncio.get_event_loop()
 
 app = FastAPI()
@@ -19,7 +20,7 @@ app.add_middleware(
 )
 
 class DownloadRequest(BaseModel):
-    url: str
+    urls: List[str]
     download_dir: str
 
 class MetadataRequest(BaseModel):
@@ -44,54 +45,56 @@ async def root():
 
 @app.post("/download")
 async def download_video(req: DownloadRequest):
-    async def progress_hook(d):
-        if d['status'] == 'downloading':
-            percent = d.get('downloaded_bytes', 0) / d.get('total_bytes', 1) * 100 if d.get('total_bytes') else 0
-            msg = {
-                'status': d['status'],
-                'filename': d.get('filename', ''),
-                'percent': percent,
-                'speed': d.get('speed', 0),
-                'eta': d.get('eta', 0),
-                'downloaded_bytes': d.get('downloaded_bytes', 0),
-                'total_bytes': d.get('total_bytes', 0),
+    results = []
+    for url in req.urls:
+        async def progress_hook(d):
+            if d['status'] == 'downloading':
+                percent = d.get('downloaded_bytes', 0) / d.get('total_bytes', 1) * 100 if d.get('total_bytes') else 0
+                msg = {
+                    'status': d['status'],
+                    'filename': d.get('filename', ''),
+                    'percent': percent,
+                    'speed': d.get('speed', 0),
+                    'eta': d.get('eta', 0),
+                    'downloaded_bytes': d.get('downloaded_bytes', 0),
+                    'total_bytes': d.get('total_bytes', 0),
+                    'url': url,
+                }
+                for ws in list(progress_connections):
+                    try:
+                        await ws.send_json(msg)
+                    except Exception:
+                        progress_connections.remove(ws)
+            elif d['status'] == 'finished':
+                msg = {'status': 'finished', 'filename': d.get('filename', ''), 'url': url}
+                for ws in list(progress_connections):
+                    try:
+                        await ws.send_json(msg)
+                    except Exception:
+                        progress_connections.remove(ws)
+        def sync_progress_hook(d):
+            asyncio.run_coroutine_threadsafe(progress_hook(d), main_loop)
+        def download_with_hook(url, download_dir):
+            os.makedirs(download_dir, exist_ok=True)
+            ydl_opts = {
+                'format': 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best',
+                'merge_output_format': 'mp4',
+                'outtmpl': os.path.join(download_dir, '%(title)s.%(ext)s'),
+                'quiet': False,
+                'noplaylist': True,
+                'progress_hooks': [sync_progress_hook],
             }
-            # Send to all connected clients
-            for ws in list(progress_connections):
-                try:
-                    await ws.send_json(msg)
-                except Exception:
-                    progress_connections.remove(ws)
-        elif d['status'] == 'finished':
-            msg = {'status': 'finished', 'filename': d.get('filename', '')}
-            for ws in list(progress_connections):
-                try:
-                    await ws.send_json(msg)
-                except Exception:
-                    progress_connections.remove(ws)
-    # Patch yt_dlp to use async progress_hook
-    def sync_progress_hook(d):
-        asyncio.run_coroutine_threadsafe(progress_hook(d), main_loop)
-    def download_with_hook(url, download_dir):
-        os.makedirs(download_dir, exist_ok=True)
-        ydl_opts = {
-            'format': 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best',
-            'merge_output_format': 'mp4',
-            'outtmpl': os.path.join(download_dir, '%(title)s.%(ext)s'),
-            'quiet': False,
-            'noplaylist': True,
-            'progress_hooks': [sync_progress_hook],
-        }
-        from youtube_downloader import COOKIES_PATH
-        if os.path.exists(COOKIES_PATH):
-            ydl_opts['cookiefile'] = COOKIES_PATH
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-    try:
-        await asyncio.to_thread(download_with_hook, req.url, req.download_dir)
-        return {"status": "success", "message": "Download complete!"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+            from youtube_downloader import COOKIES_PATH
+            if os.path.exists(COOKIES_PATH):
+                ydl_opts['cookiefile'] = COOKIES_PATH
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+        try:
+            await asyncio.to_thread(download_with_hook, url, req.download_dir)
+            results.append({"url": url, "status": "success"})
+        except Exception as e:
+            results.append({"url": url, "status": "error", "error": str(e)})
+    return {"status": "completed", "results": results}
 
 @app.post("/metadata")
 async def get_metadata(req: MetadataRequest):
