@@ -8,6 +8,7 @@
     "electron": "ELECTRON_START_URL=http://localhost:3000 electron ."
   },
   "devDependencies": {
-    "electron": "^37.2.1"
+    "electron": "^37.2.1",
+    "electron-builder": "^26.0.12"
   }
 }
