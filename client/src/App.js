@@ -80,10 +80,15 @@ function App() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '' });
   const [dragActive, setDragActive] = useState(false);
   const [dropModeBatch, setDropModeBatch] = useState(true); // true: add to batch, false: immediate download
+  const downloadDirRef = useRef(downloadDir);
 
   useEffect(() => {
     localStorage.setItem('yt_primary_color', JSON.stringify(primaryColor));
   }, [primaryColor]);
+
+  useEffect(() => {
+    downloadDirRef.current = downloadDir;
+  }, [downloadDir]);
 
   const theme = createTheme({
     palette: {
@@ -171,7 +176,7 @@ function App() {
             title: data.title || '',
             thumbnail: data.thumbnail || '',
             url: data.url,
-            downloadDir: data.downloadDir || downloadDir,
+            downloadDir: data.downloadDir || downloadDirRef.current,
             date: new Date().toISOString(),
             status: 'Completed',
             filename: data.filename || '',
