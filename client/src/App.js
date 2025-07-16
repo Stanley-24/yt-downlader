@@ -81,6 +81,7 @@ function App() {
   const [dragActive, setDragActive] = useState(false);
   const [dropModeBatch, setDropModeBatch] = useState(true); // true: add to batch, false: immediate download
   const downloadDirRef = useRef(downloadDir);
+  const [releaseAssets, setReleaseAssets] = useState({ mac: null, win: null });
 
   useEffect(() => {
     localStorage.setItem('yt_primary_color', JSON.stringify(primaryColor));
@@ -89,6 +90,23 @@ function App() {
   useEffect(() => {
     downloadDirRef.current = downloadDir;
   }, [downloadDir]);
+
+  useEffect(() => {
+    // Fetch latest GitHub release assets
+    fetch('https://api.github.com/repos/Stanley-24/yt-downlader/releases/latest')
+      .then(res => res.json())
+      .then(data => {
+        if (data.assets) {
+          const macAsset = data.assets.find(a => a.name.endsWith('.dmg'));
+          const winAsset = data.assets.find(a => a.name.endsWith('.exe'));
+          setReleaseAssets({
+            mac: macAsset ? macAsset.browser_download_url : null,
+            win: winAsset ? winAsset.browser_download_url : null,
+          });
+        }
+      })
+      .catch(() => setReleaseAssets({ mac: null, win: null }));
+  }, []);
 
   const theme = createTheme({
     palette: {
@@ -447,6 +465,104 @@ function App() {
     </Box>
   );
 
+  // Responsive, themed, web-only download section
+  const DownloadSection = () => {
+    if (isElectron || (!releaseAssets.mac && !releaseAssets.win)) return null;
+    return (
+      <Box
+        sx={{
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          mb: { xs: 3, sm: 4 },
+        }}
+      >
+        <Typography
+          variant="subtitle1"
+          sx={{
+            mb: 1,
+            fontWeight: 600,
+            color: theme.palette.primary.main,
+            letterSpacing: 0.5,
+          }}
+        >
+          Get the Desktop App
+        </Typography>
+        <Card
+          elevation={8}
+          sx={{
+            px: 0,
+            py: 0,
+            borderRadius: 8,
+            background: `linear-gradient(90deg, ${theme.palette.primary.light} 0%, ${theme.palette.secondary.light} 100%)`,
+            boxShadow: '0 6px 32px 0 rgba(33,150,243,0.10)',
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: 'center',
+            justifyContent: 'center',
+            maxWidth: 480,
+            width: '100%',
+            border: 'none',
+          }}
+        >
+          {releaseAssets.mac && (
+            <Button
+              variant="contained"
+              color="primary"
+              href={releaseAssets.mac}
+              target="_blank"
+              startIcon={<DownloadIcon />}
+              endIcon={<OpenInNewIcon />}
+              sx={{
+                flex: 1,
+                minWidth: 180,
+                minHeight: 56,
+                fontWeight: 600,
+                fontSize: { xs: '1rem', sm: '1.1rem' },
+                borderRadius: { xs: '8px 8px 0 0', sm: '8px 0 0 8px' },
+                textTransform: 'none',
+                boxShadow: 'none',
+                background: theme.palette.primary.main,
+                '&:hover': {
+                  background: theme.palette.primary.dark,
+                },
+              }}
+            >
+              Download for Mac
+            </Button>
+          )}
+          {releaseAssets.win && (
+            <Button
+              variant="contained"
+              color="secondary"
+              href={releaseAssets.win}
+              target="_blank"
+              startIcon={<DownloadIcon />}
+              endIcon={<OpenInNewIcon />}
+              sx={{
+                flex: 1,
+                minWidth: 180,
+                minHeight: 56,
+                fontWeight: 600,
+                fontSize: { xs: '1rem', sm: '1.1rem' },
+                borderRadius: { xs: '0 0 8px 8px', sm: '0 8px 8px 0' },
+                textTransform: 'none',
+                boxShadow: 'none',
+                background: theme.palette.secondary.main,
+                '&:hover': {
+                  background: theme.palette.secondary.dark,
+                },
+              }}
+            >
+              Download for Windows
+            </Button>
+          )}
+        </Card>
+      </Box>
+    );
+  };
+
   return (
     <ThemeProvider theme={theme}>
       {/* Beautiful background gradient and blurred shapes */}
@@ -498,78 +614,7 @@ function App() {
             color: 'text.primary',
           }}
         >
-          <Toolbar sx={{ position: 'relative', minHeight: 64, px: { xs: 1, sm: 2 } }}>
-            {/* Sidebar toggle for mobile */}
-            {isMobile && !sidebarMobileOpen && (
-              <IconButton
-                edge="start"
-                color="inherit"
-                aria-label="open sidebar"
-                onClick={() => handleToggleSidebar(false, true)}
-                sx={{ mr: 1 }}
-              >
-                <MenuIcon />
-              </IconButton>
-            )}
-            {isMobile && sidebarMobileOpen && (
-              <IconButton
-                edge="start"
-                color="inherit"
-                aria-label="close sidebar"
-                onClick={() => handleToggleSidebar(true)}
-                sx={{ mr: 1 }}
-              >
-                <CloseIcon />
-              </IconButton>
-            )}
-            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 700,
-                  textAlign: 'center',
-                  fontSize: { xs: '1.3rem', sm: '1.7rem', md: '2.1rem' },
-                  lineHeight: 1.2,
-                  letterSpacing: 0.5,
-                  px: 2,
-                }}
-              >
-                YouTube Video Downloader
-              </Typography>
-            </Box>
-            {/* Theme picker as palette icon button with menu */}
-            <Box sx={{ ml: 1 }}>
-              <IconButton
-                color="inherit"
-                aria-label="theme picker"
-                onClick={e => setThemeMenuAnchor(e.currentTarget)}
-                size="large"
-              >
-                <PaletteIcon />
-              </IconButton>
-              <Menu
-                anchorEl={themeMenuAnchor}
-                open={Boolean(themeMenuAnchor)}
-                onClose={() => setThemeMenuAnchor(null)}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-              >
-                {COLOR_OPTIONS.map(opt => (
-                  <MenuItem
-                    key={opt.name}
-                    selected={primaryColor === opt.name}
-                    onClick={() => {
-                      setPrimaryColor(opt.name);
-                      setThemeMenuAnchor(null);
-                    }}
-                  >
-                    <Box sx={{ width: 20, height: 20, borderRadius: '50%', bgcolor: opt.value[500], mr: 1, border: primaryColor === opt.name ? '2px solid' : 'none', borderColor: 'primary.main' }} />
-                    {opt.name}
-                  </MenuItem>
-                ))}
-              </Menu>
-            </Box>
-          </Toolbar>
+          {/* Only keep the theme picker icon button and menu, if needed, or remove AppBar entirely if not needed */}
         </AppBar>
         <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
           {/* Sidebar Drawer for History */}
@@ -612,18 +657,38 @@ function App() {
             }}
           >
             <Box
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              sx={{ position: 'relative', width: '100%', maxWidth: 480 }}
+              sx={{
+                width: '100%',
+                maxWidth: 480,
+                mx: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2,
+              }}
             >
+              <Typography
+                variant="h4"
+                sx={{
+                  fontWeight: 700,
+                  textAlign: 'center',
+                  fontSize: { xs: '1.3rem', sm: '1.7rem', md: '2.1rem' },
+                  lineHeight: 1.2,
+                  letterSpacing: 0.5,
+                  px: 2,
+                  mb: 1,
+                }}
+              >
+                YouTube Video Downloader
+              </Typography>
+              <DownloadSection />
+              {/* Main Card (form, etc.) goes here, remove maxWidth/width from Card itself */}
               <Card
                 elevation={6}
                 sx={{
                   p: { xs: 2, sm: 4 },
                   borderRadius: 4,
                   width: '100%',
-                  maxWidth: 480,
                   boxShadow: 6,
                   display: 'flex',
                   flexDirection: 'column',
