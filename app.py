@@ -6,6 +6,7 @@ from youtube_downloader import download_youtube_video
 import yt_dlp
 import asyncio
 from typing import List
+from fastapi.responses import FileResponse
 main_loop = asyncio.get_event_loop()
 
 app = FastAPI()
@@ -117,4 +118,12 @@ async def get_metadata(req: MetadataRequest):
             }
     except Exception as e:
         print(f"yt-dlp error: {e}")  # Add this for extra debugging
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/downloaded-file")
+async def get_downloaded_file(filename: str, download_dir: str = "downloads"):
+    import os
+    file_path = os.path.join(download_dir, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(file_path, filename=filename) 
