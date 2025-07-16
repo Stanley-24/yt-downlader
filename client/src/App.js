@@ -16,6 +16,8 @@ import { useTheme } from '@mui/material/styles';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { blue, teal, deepPurple, pink, green, orange } from '@mui/material/colors';
 
+const isElectron = !!(window && window.electronAPI);
+
 function formatBytes(bytes) {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -54,7 +56,7 @@ const API_BASE_URL = "https://yt-downlader-hujz.onrender.com";
 function App() {
   const [urlInput, setUrlInput] = useState('');
   const [urls, setUrls] = useState([]);
-  const [downloadDir, setDownloadDir] = useState('');
+  const [downloadDir, setDownloadDir] = useState(isElectron ? '' : 'downloads');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -797,7 +799,7 @@ function App() {
                       label="Download Directory"
                       variant="outlined"
                       fullWidth
-                      required
+                      required={isElectron}
                       value={downloadDir}
                       InputProps={{
                         startAdornment: (
@@ -805,17 +807,21 @@ function App() {
                             <FolderIcon color="action" />
                           </InputAdornment>
                         ),
-                        endAdornment: (
+                        endAdornment: isElectron ? (
                           <InputAdornment position="end">
                             <Button onClick={handleSelectFolder} variant="outlined" size="small">
                               Choose
                             </Button>
                           </InputAdornment>
-                        ),
+                        ) : null,
                         readOnly: true,
                       }}
-                      helperText="Select a folder to save the video"
-                      onClick={handleSelectFolder}
+                      helperText={
+                        isElectron
+                          ? "Select a folder to save the video"
+                          : "Downloads will be saved to your browser’s default Downloads folder"
+                      }
+                      onClick={isElectron ? handleSelectFolder : undefined}
                       sx={{
                         background: 'rgba(255,255,255,0.85)',
                         borderRadius: 2,
