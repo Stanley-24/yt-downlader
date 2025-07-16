@@ -41,6 +41,8 @@ jobs:
       - name: Build Electron app
         run: npm run dist
         working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
