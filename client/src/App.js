@@ -118,6 +118,11 @@ function App() {
 
   // Fix: Add downloadDir to dependency array if used in this effect
   useEffect(() => {
+    if (!urls.length) {
+      setMeta({ title: '', thumbnail: '' });
+      setMetaError(null);
+      return;
+    }
     // Only fetch if looks like a YouTube URL
     if (!/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//.test(urls[0])) {
       setMeta({ title: '', thumbnail: '' });
@@ -145,7 +150,7 @@ function App() {
         setMeta({ title: '', thumbnail: '' });
       })
       .finally(() => setMetaLoading(false));
-  }, [urls]);
+  }, [urls, downloadDir]);
 
   // WebSocket for progress
   useEffect(() => {
