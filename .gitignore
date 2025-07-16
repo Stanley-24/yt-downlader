@@ -27,3 +27,4 @@ Thumbs.db
 
 # Electron (if you build with Electron)
 electron/dist/
+cookies.txt
