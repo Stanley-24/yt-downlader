@@ -17,8 +17,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "dist": "electron-builder"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
@@ -36,20 +35,6 @@
       "last 1 chrome version",
       "last 1 firefox version",
       "last 1 safari version"
-    ]
-  },
-  "devDependencies": {
-    "electron": "^37.2.1"
-  },
-  "build": {
-    "appId": "com.yourdomain.youtubedownloader",
-    "files": [
-      "client/build/**/*",
-      "main.js",
-      "preload.js",
-      "app.py",
-      "youtube_downloader.py",
-      "cookies.txt"
     ]
   }
 }
