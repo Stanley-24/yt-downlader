@@ -86,7 +86,7 @@ async def download_video(req: DownloadRequest):
             }
             from youtube_downloader import COOKIES_PATH
             if os.path.exists(COOKIES_PATH):
-                ydl_opts['cookiefile'] = COOKIES_PATH
+                ydl_opts['cookiefile'] = COOKIES_PATH  # type: ignore
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
         try:
@@ -104,7 +104,7 @@ async def get_metadata(req: MetadataRequest):
         ydl_opts = {'quiet': True}
         if os.path.exists(COOKIES_PATH):
             print(f"Using cookies file at: {COOKIES_PATH}")  # Diagnostic log
-            ydl_opts['cookiefile'] = COOKIES_PATH
+            ydl_opts['cookiefile'] = COOKIES_PATH  # type: ignore
         else:
             print(f"Cookies file not found at: {COOKIES_PATH}")  # Diagnostic log
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
