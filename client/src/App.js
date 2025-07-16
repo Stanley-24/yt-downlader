@@ -116,12 +116,8 @@ function App() {
     setUrls(parsed);
   }, [urlInput]);
 
+  // Fix: Add downloadDir to dependency array if used in this effect
   useEffect(() => {
-    if (!urls.length) {
-      setMeta({ title: '', thumbnail: '' });
-      setMetaError(null);
-      return;
-    }
     // Only fetch if looks like a YouTube URL
     if (!/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//.test(urls[0])) {
       setMeta({ title: '', thumbnail: '' });
@@ -329,30 +325,6 @@ function App() {
     e.stopPropagation();
     setDragActive(false);
   };
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    let dropped = '';
-    if (e.dataTransfer.items) {
-      for (let i = 0; i < e.dataTransfer.items.length; i++) {
-        if (e.dataTransfer.items[i].kind === 'string') {
-          e.dataTransfer.items[i].getAsString((str) => {
-            dropped = str.trim();
-            processDrop(dropped);
-          });
-          return;
-        } else if (e.dataTransfer.items[i].kind === 'file') {
-          // Optionally handle file drop here
-          // const file = e.dataTransfer.items[i].getAsFile();
-          // processFileDrop(file);
-        }
-      }
-    } else if (e.dataTransfer.getData('text')) {
-      dropped = e.dataTransfer.getData('text').trim();
-      processDrop(dropped);
-    }
-  };
   const processDrop = (dropped) => {
     // Only accept YouTube URLs for now
     const ytRegex = /https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/[\w\-?&=%.]+/g;
@@ -372,6 +344,30 @@ function App() {
         if (form) form.requestSubmit();
       }, 100);
       setSnackbar({ open: true, message: 'Download started!' });
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    let dropped = '';
+    if (e.dataTransfer.items) {
+      for (let i = 0; i < e.dataTransfer.items.length; i++) {
+        if (e.dataTransfer.items[i].kind === 'string') {
+          e.dataTransfer.items[i].getAsString((str) => {
+            processDrop(str.trim());
+          });
+          return;
+        } else if (e.dataTransfer.items[i].kind === 'file') {
+          // Optionally handle file drop here
+          // const file = e.dataTransfer.items[i].getAsFile();
+          // processFileDrop(file);
+        }
+      }
+    } else if (e.dataTransfer.getData('text')) {
+      dropped = e.dataTransfer.getData('text').trim();
+      processDrop(dropped);
     }
   };
 
