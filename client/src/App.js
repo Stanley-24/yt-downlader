@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  AppBar, Toolbar, IconButton, Typography, Container, Box, TextField, Button, Alert, CircularProgress, Paper, InputAdornment, Card, CardMedia, CardContent, LinearProgress, Stack, Drawer, List, ListItem, ListItemAvatar, Avatar, ListItemText, Divider, useMediaQuery, Tooltip, MenuItem, Select, FormControl, InputLabel, Menu, Chip, Snackbar, Switch, FormControlLabel
+  AppBar, Toolbar, IconButton, Typography, Container, Box, TextField, Button, Alert, CircularProgress, InputAdornment, Card, CardMedia, CardContent, LinearProgress, Stack, Drawer, List, ListItem, ListItemAvatar, Avatar, ListItemText, Divider, useMediaQuery, Tooltip, MenuItem, Chip, Snackbar, Switch, FormControlLabel, Menu
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -70,7 +70,6 @@ function App() {
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const isMdUp = useMediaQuery(muiTheme.breakpoints.up('md'));
-  const isXs = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const [sidebarOpen, setSidebarOpen] = useState(isMdUp);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [primaryColor, setPrimaryColor] = useState(() => {
