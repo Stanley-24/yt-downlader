@@ -38,8 +38,8 @@ function formatETA(eta) {
 }
 
 const HISTORY_KEY = 'yt_download_history';
-const SIDEBAR_WIDTH = 300;
-const SIDEBAR_WIDTH_MOBILE = 200;
+const SIDEBAR_WIDTH = 220; // was 300
+const SIDEBAR_WIDTH_MOBILE = 140; // was 200
 const SIDEBAR_COLLAPSED = 56;
 
 const COLOR_OPTIONS = [
@@ -70,8 +70,10 @@ function App() {
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const isMdUp = useMediaQuery(muiTheme.breakpoints.up('md'));
-  const [sidebarOpen, setSidebarOpen] = useState(isMdUp);
+  const isWide = useMediaQuery('(min-width:658px)');
+  const [sidebarOpen, setSidebarOpen] = useState(isWide);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [primaryColor, setPrimaryColor] = useState(() => {
     const saved = localStorage.getItem('yt_primary_color');
     return saved ? JSON.parse(saved) : 'Blue';
@@ -82,6 +84,14 @@ function App() {
   const [dropModeBatch, setDropModeBatch] = useState(true); // true: add to batch, false: immediate download
   const downloadDirRef = useRef(downloadDir);
   const [releaseAssets, setReleaseAssets] = useState({ mac: null, win: null });
+
+  const theme = createTheme({
+    palette: {
+      primary: {
+        main: COLOR_OPTIONS.find(opt => opt.name === primaryColor)?.value[500] || blue[500],
+      },
+    },
+  });
 
   useEffect(() => {
     localStorage.setItem('yt_primary_color', JSON.stringify(primaryColor));
@@ -108,16 +118,23 @@ function App() {
       .catch(() => setReleaseAssets({ mac: null, win: null }));
   }, []);
 
-  const theme = createTheme({
-    palette: {
-      primary: COLOR_OPTIONS.find(c => c.name === primaryColor)?.value || blue,
-    },
-  });
-
-  // Update sidebar state on screen size change
+  // 1. Sidebar open/collapsed logic
   useEffect(() => {
-    setSidebarOpen(isMdUp);
-  }, [isMdUp]);
+    setSidebarOpen(isWide);
+    setSidebarCollapsed(false);
+  }, [isWide]);
+
+  // Sidebar toggle handler
+  const handleSidebarToggle = () => {
+    if (isWide) setSidebarCollapsed((prev) => !prev);
+    else setSidebarMobileOpen((open) => !open);
+  };
+
+  // 2. Theme switcher in AppBar
+  useEffect(() => {
+    // Update sidebar state on screen size change
+    setSidebarOpen(isWide);
+  }, [isWide]);
 
   // Load history from localStorage
   useEffect(() => {
@@ -411,16 +428,14 @@ function App() {
             display: (sidebarOpen || isMobile) ? 'block' : 'none',
             transition: 'opacity 0.2s',
             opacity: (sidebarOpen || isMobile) ? 1 : 0,
+            fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' },
+            fontWeight: 600,
+            mt: { xs: 2.5, sm: 1, md: 0 },
           }}
         >
           Download History
         </Typography>
-        {/* Always show toggle button on desktop */}
-        {!isMobile && (
-          <IconButton onClick={handleToggleSidebar} size="small">
-            {sidebarOpen ? <ChevronLeftIcon /> : <MenuIcon />}
-          </IconButton>
-        )}
+        {/* Remove the IconButton for toggling sidebar from here */}
       </Box>
       {/* Show clear button only when open or mobile */}
       {(sidebarOpen || isMobile) && (
@@ -467,44 +482,20 @@ function App() {
 
   // Responsive, themed, web-only download section
   const DownloadSection = () => {
+    // muiTheme is available from the parent scope
     if (isElectron || (!releaseAssets.mac && !releaseAssets.win)) return null;
     return (
-      <Box
-        sx={{
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          mb: { xs: 3, sm: 4 },
-        }}
-      >
+      <Box sx={{ width: '100%', mb: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Typography
           variant="subtitle1"
-          sx={{
-            mb: 1,
-            fontWeight: 600,
-            color: theme.palette.primary.main,
-            letterSpacing: 0.5,
-          }}
+          sx={{ mb: 1, fontWeight: 600, color: muiTheme.palette.primary.main, letterSpacing: 0.5, textAlign: 'center' }}
         >
           Get the Desktop App
         </Typography>
-        <Card
-          elevation={8}
-          sx={{
-            px: 0,
-            py: 0,
-            borderRadius: 8,
-            background: `linear-gradient(90deg, ${theme.palette.primary.light} 0%, ${theme.palette.secondary.light} 100%)`,
-            boxShadow: '0 6px 32px 0 rgba(33,150,243,0.10)',
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: 'center',
-            justifyContent: 'center',
-            maxWidth: 480,
-            width: '100%',
-            border: 'none',
-          }}
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          sx={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}
         >
           {releaseAssets.mac && (
             <Button
@@ -514,22 +505,27 @@ function App() {
               target="_blank"
               startIcon={<DownloadIcon />}
               endIcon={<OpenInNewIcon />}
-              sx={{
-                flex: 1,
-                minWidth: 180,
-                minHeight: 56,
+              size="small"
+              fullWidth={isMobile}
+              sx={(theme) => ({
                 fontWeight: 600,
-                fontSize: { xs: '1rem', sm: '1.1rem' },
-                borderRadius: { xs: '8px 8px 0 0', sm: '8px 0 0 8px' },
+                fontSize: { xs: '0.95rem', sm: '1rem' },
+                borderRadius: { xs: 2, sm: '8px 0 0 8px' },
                 textTransform: 'none',
                 boxShadow: 'none',
-                background: theme.palette.primary.main,
-                '&:hover': {
-                  background: theme.palette.primary.dark,
-                },
-              }}
+                p: { xs: 1, sm: 1.5 },
+                minWidth: 0,
+                minHeight: 36,
+                '&:hover': { background: theme.palette.primary.dark },
+                transition: 'background 0.2s, box-shadow 0.2s',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+              })}
             >
-              Download for Mac
+              <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                Download for Mac
+              </Box>
             </Button>
           )}
           {releaseAssets.win && (
@@ -540,25 +536,30 @@ function App() {
               target="_blank"
               startIcon={<DownloadIcon />}
               endIcon={<OpenInNewIcon />}
-              sx={{
-                flex: 1,
-                minWidth: 180,
-                minHeight: 56,
+              size="small"
+              fullWidth={isMobile}
+              sx={(theme) => ({
                 fontWeight: 600,
-                fontSize: { xs: '1rem', sm: '1.1rem' },
-                borderRadius: { xs: '0 0 8px 8px', sm: '0 8px 8px 0' },
+                fontSize: { xs: '0.95rem', sm: '1rem' },
+                borderRadius: { xs: 2, sm: '0 8px 8px 0' },
                 textTransform: 'none',
                 boxShadow: 'none',
-                background: theme.palette.secondary.main,
-                '&:hover': {
-                  background: theme.palette.secondary.dark,
-                },
-              }}
+                p: { xs: 1, sm: 1.5 },
+                minWidth: 0,
+                minHeight: 36,
+                '&:hover': { background: theme.palette.secondary.dark },
+                transition: 'background 0.2s, box-shadow 0.2s',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+              })}
             >
-              Download for Windows
+              <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                Download for Windows
+              </Box>
             </Button>
           )}
-        </Card>
+        </Stack>
       </Box>
     );
   };
@@ -614,7 +615,70 @@ function App() {
             color: 'text.primary',
           }}
         >
-          {/* Only keep the theme picker icon button and menu, if needed, or remove AppBar entirely if not needed */}
+          <Toolbar sx={{ minHeight: { xs: 56, sm: 64 }, px: { xs: 1, sm: 2 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+              {/* Left: Hamburger/Close icon logic */}
+              <Box sx={{ width: 48, display: { xs: 'flex', md: 'none' }, alignItems: 'center', justifyContent: 'flex-start' }}>
+                {isMobile ? (
+                  sidebarMobileOpen ? (
+                    <IconButton onClick={handleSidebarToggle} size="small">
+                      <CloseIcon />
+                    </IconButton>
+                  ) : (
+                    <IconButton onClick={handleSidebarToggle} size="small">
+                      <MenuIcon />
+                    </IconButton>
+                  )
+                ) : null}
+              </Box>
+              {/* Center: Title */}
+              <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <Typography
+                  variant="h6"
+                  component="div"
+                  sx={{
+                    fontWeight: 700,
+                    letterSpacing: 1,
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    textAlign: 'center',
+                    maxWidth: { xs: '80vw', sm: '60vw', md: '40vw' },
+                    fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' },
+                    display: { xs: 'block', md: 'none' },
+                  }}
+                >
+                  YouTube Video Downloader
+                </Typography>
+              </Box>
+              {/* Right: Palette icon (always takes up space) */}
+              <Box sx={{ width: 48, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                <IconButton color="inherit" onClick={e => setThemeMenuAnchor(e.currentTarget)} size="large">
+                  <PaletteIcon />
+                </IconButton>
+              </Box>
+            </Box>
+            <Menu
+              anchorEl={themeMenuAnchor}
+              open={Boolean(themeMenuAnchor)}
+              onClose={() => setThemeMenuAnchor(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              {COLOR_OPTIONS.map(opt => (
+                <MenuItem
+                  key={opt.name}
+                  selected={primaryColor === opt.name}
+                  onClick={() => {
+                    setPrimaryColor(opt.name);
+                    setThemeMenuAnchor(null);
+                  }}
+                >
+                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', bgcolor: opt.value[500], mr: 1, border: primaryColor === opt.name ? '2px solid' : 'none', borderColor: 'primary.main' }} />
+                  {opt.name}
+                </MenuItem>
+              ))}
+            </Menu>
+          </Toolbar>
         </AppBar>
         <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
           {/* Sidebar Drawer for History */}
@@ -667,20 +731,6 @@ function App() {
                 gap: 2,
               }}
             >
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 700,
-                  textAlign: 'center',
-                  fontSize: { xs: '1.3rem', sm: '1.7rem', md: '2.1rem' },
-                  lineHeight: 1.2,
-                  letterSpacing: 0.5,
-                  px: 2,
-                  mb: 1,
-                }}
-              >
-                YouTube Video Downloader
-              </Typography>
               <DownloadSection />
               {/* Main Card (form, etc.) goes here, remove maxWidth/width from Card itself */}
               <Card
@@ -698,6 +748,9 @@ function App() {
                   transition: 'border 0.2s, background 0.2s',
                 }}
               >
+                <Typography variant="h5" sx={{ fontWeight: 600, textAlign: 'center', mb: 2, color: 'primary.main' }}>
+                  Download videos instantly from YouTube with ease!
+                </Typography>
                 <FormControlLabel
                   control={<Switch checked={dropModeBatch} onChange={e => setDropModeBatch(e.target.checked)} color="primary" />}
                   label={dropModeBatch ? 'Drop adds to batch' : 'Drop starts download'}
@@ -720,12 +773,6 @@ function App() {
                   </Box>
                 )}
                 <DownloadIcon color="primary" sx={{ fontSize: 56, mb: 2 }} />
-                <Typography variant="h4" fontWeight={700} gutterBottom align="center">
-                  YouTube Video Downloader
-                </Typography>
-                <Typography variant="subtitle1" color="text.secondary" align="center" sx={{ mb: 3 }}>
-                  Download your favorite YouTube videos in one click!
-                </Typography>
                 {metaLoading && <CircularProgress sx={{ my: 2 }} />}
                 {metaError && <Alert severity="error" sx={{ my: 2 }}>{metaError}</Alert>}
                 {meta.thumbnail && (
