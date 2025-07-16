@@ -116,7 +116,6 @@ function App() {
     setUrls(parsed);
   }, [urlInput]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!urls.length) {
       setMeta({ title: '', thumbnail: '' });
