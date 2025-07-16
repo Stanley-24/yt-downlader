@@ -33,4 +33,17 @@ export default [
       ...reactHooksPlugin.configs.recommended.rules,
     },
   },
+  // Add this overrides block for JSX parsing
+  {
+    files: ["*.js", "*.jsx"],
+    languageOptions: {
+      parser: babelParser,
+      parserOptions: {
+        requireConfigFile: false,
+        ecmaVersion: 2022,
+        sourceType: "module",
+        ecmaFeatures: { jsx: true },
+      },
+    },
+  },
 ]; 

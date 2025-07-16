@@ -415,6 +415,18 @@ function App() {
     }
   };
 
+  // Add the handleDownloadFile function
+  const handleDownloadFile = (item) => {
+    const url = `${API_BASE_URL}/downloaded-file?filename=${encodeURIComponent(item.filename)}&download_dir=${encodeURIComponent(item.downloadDir || 'downloads')}`;
+    // Create a temporary link to trigger the download
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', item.filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Sidebar content
   const sidebarContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -447,11 +459,16 @@ function App() {
         {history.map((item, idx) => (
           <Tooltip key={idx} title={item.title} placement="right">
             <ListItem alignItems="flex-start" secondaryAction={
-              item.filename && (
-                <IconButton edge="end" aria-label="open" onClick={() => handleOpenFile(item)}>
-                  <OpenInNewIcon />
-                </IconButton>
-              )
+              item.filename && item.status === 'Completed' ? (
+                <React.Fragment>
+                  <IconButton edge="end" aria-label="download" onClick={() => handleDownloadFile(item)}>
+                    <DownloadIcon />
+                  </IconButton>
+                  <IconButton edge="end" aria-label="open" onClick={() => handleOpenFile(item)}>
+                    <OpenInNewIcon />
+                  </IconButton>
+                </React.Fragment>
+              ) : null
             }>
               <ListItemAvatar>
                 <Avatar variant="rounded" src={item.thumbnail} alt={item.title} />
