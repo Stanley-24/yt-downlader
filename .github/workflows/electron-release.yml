@@ -21,15 +21,19 @@ jobs:
 
       - name: Install root dependencies
         run: npm install
+        working-directory: .
 
       - name: Install client dependencies
         run: npm install --prefix client
+        working-directory: .
 
       - name: Build React app
         run: npm run build --prefix client
+        working-directory: .
 
       - name: Build Electron app
         run: npm run dist
+        working-directory: .
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
