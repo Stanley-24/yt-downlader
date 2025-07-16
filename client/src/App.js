@@ -150,7 +150,7 @@ function App() {
         setMeta({ title: '', thumbnail: '' });
       })
       .finally(() => setMetaLoading(false));
-  }, [urls, downloadDir]);
+  }, [urls]);
 
   // WebSocket for progress
   useEffect(() => {
