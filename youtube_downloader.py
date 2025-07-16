@@ -12,7 +12,7 @@ COOKIES_PATH = os.path.join(os.path.dirname(__file__), 'cookies.txt')
 def download_youtube_video(url, download_dir):
     os.makedirs(download_dir, exist_ok=True)
     ydl_opts = {
-        'format': 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best',
+        'format': 'bestvideo+bestaudio/best',
         'merge_output_format': 'mp4',
         'outtmpl': os.path.join(download_dir, '%(title)s.%(ext)s'),
         'quiet': False,
