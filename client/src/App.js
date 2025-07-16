@@ -116,7 +116,7 @@ function App() {
     setUrls(parsed);
   }, [urlInput]);
 
-  // Fix: Add downloadDir to dependency array if used in this effect
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!urls.length) {
       setMeta({ title: '', thumbnail: '' });
