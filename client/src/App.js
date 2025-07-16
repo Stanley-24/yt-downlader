@@ -49,6 +49,8 @@ const COLOR_OPTIONS = [
   { name: 'Orange', value: orange },
 ];
 
+const API_BASE_URL = "https://yt-downlader-hujz.onrender.com";
+
 function App() {
   const [urlInput, setUrlInput] = useState('');
   const [urls, setUrls] = useState([]);
@@ -127,7 +129,7 @@ function App() {
     }
     setMetaLoading(true);
     setMetaError(null);
-    fetch('http://localhost:8000/metadata', {
+    fetch(`${API_BASE_URL}/metadata`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: urls[0] })
@@ -151,7 +153,7 @@ function App() {
   // WebSocket for progress
   useEffect(() => {
     if (wsRef.current) return; // Only connect once
-    const ws = new window.WebSocket('ws://127.0.0.1:8000/ws/progress');
+    const ws = new window.WebSocket('wss://yt-downlader-hujz.onrender.com/ws/progress');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.url) {
@@ -228,7 +230,7 @@ function App() {
     setUrls([]);
     setUrlInput('');
     try {
-      const response = await fetch('http://localhost:8000/download', {
+      const response = await fetch(`${API_BASE_URL}/download`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ urls, download_dir: downloadDir })
