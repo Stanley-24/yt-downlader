@@ -99,7 +99,12 @@ async def download_video(req: DownloadRequest):
 @app.post("/metadata")
 async def get_metadata(req: MetadataRequest):
     try:
-        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+        import os
+        from youtube_downloader import COOKIES_PATH
+        ydl_opts = {'quiet': True}
+        if os.path.exists(COOKIES_PATH):
+            ydl_opts['cookiefile'] = COOKIES_PATH
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(req.url, download=False)
             if info is None:
                 return {'title': '', 'thumbnail': ''}
