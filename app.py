@@ -38,9 +38,16 @@ def get_cookies_path():
     # First try environment variable (production)
     cookies_env = os.getenv('YOUTUBE_COOKIES')
     if cookies_env:
+        # Remove the YOUTUBE_COOKIES="..." wrapper if present
+        if cookies_env.startswith('YOUTUBE_COOKIES="') and cookies_env.endswith('"'):
+            cookies_env = cookies_env[16:-1]  # Remove YOUTUBE_COOKIES=" and trailing "
+        
+        # Unescape the content
+        cookies_content = cookies_env.replace('\\n', '\n').replace('\\"', '"')
+        
         # Create temporary file from environment variable
         temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
-        temp_file.write(cookies_env)
+        temp_file.write(cookies_content)
         temp_file.close()
         return temp_file.name
     
