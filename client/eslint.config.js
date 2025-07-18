@@ -22,6 +22,8 @@ export default [
       },
       globals: {
         React: "writable",
+        document: "readonly",
+        window: "readonly",
       },
     },
     plugins: {
@@ -35,7 +37,7 @@ export default [
   },
   // Add this overrides block for JSX parsing
   {
-    files: ["*.js", "*.jsx"],
+    files: ["**/*.js", "**/*.jsx"],
     languageOptions: {
       parser: babelParser,
       parserOptions: {

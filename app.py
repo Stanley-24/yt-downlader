@@ -7,6 +7,8 @@ import yt_dlp
 import asyncio
 from typing import List
 from fastapi.responses import FileResponse
+from fastapi import Query
+import urllib.parse
 main_loop = asyncio.get_event_loop()
 
 app = FastAPI()
@@ -92,7 +94,26 @@ async def download_video(req: DownloadRequest):
                 ydl.download([url])
         try:
             await asyncio.to_thread(download_with_hook, url, req.download_dir)
-            results.append({"url": url, "status": "success"})
+            # Find the merged .mp4 file in the download_dir
+            mp4_files = []
+            for fname in os.listdir(req.download_dir):
+                if fname.endswith('.mp4'):
+                    mp4_files.append(fname)
+            
+            # Sort by modification time (newest first) to get the most recent file
+            mp4_files.sort(key=lambda x: os.path.getmtime(os.path.join(req.download_dir, x)), reverse=True)
+            
+            if mp4_files:
+                # Use the most recent .mp4 file (should be the merged one)
+                merged_file = mp4_files[0]
+                results.append({
+                    "url": url,
+                    "status": "success",
+                    "filename": merged_file,
+                    "downloadDir": req.download_dir
+                })
+            else:
+                results.append({"url": url, "status": "error", "reason": "Merged file not found"})
         except Exception as e:
             results.append({"url": url, "status": "error", "error": str(e)})
     return {"status": "completed", "results": results}
@@ -120,10 +141,42 @@ async def get_metadata(req: MetadataRequest):
         print(f"yt-dlp error: {e}")  # Add this for extra debugging
         raise HTTPException(status_code=500, detail=str(e))
 
+
+DOWNLOAD_DIR = "downloads"
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
+def normalize_filename(filename: str):
+    # Strip .fXXX formats from filename
+    if '.f' in filename and filename.endswith('.mp4'):
+        parts = filename.split('.f')
+        return parts[0] + '.mp4'
+    return filename
+
 @app.get("/downloaded-file")
-async def get_downloaded_file(filename: str, download_dir: str = "downloads"):
-    import os
-    file_path = os.path.join(download_dir, filename)
+def get_downloaded_file(
+    filename: str = Query(..., description="Name of the file to download"),
+    download_dir: str = DOWNLOAD_DIR
+):
+    safe_filename = urllib.parse.unquote(filename)
+    cleaned_filename = normalize_filename(safe_filename)
+    file_path = os.path.join(download_dir, cleaned_filename)
+    
+    print(f"Looking for file: {file_path}")  # Server log for debugging
+    
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(file_path, filename=filename) 
+        # Try to find similar files in case of format suffix issues
+        base_name = cleaned_filename.replace('.mp4', '')
+        for fname in os.listdir(download_dir):
+            if fname.startswith(base_name) and fname.endswith('.mp4'):
+                file_path = os.path.join(download_dir, fname)
+                cleaned_filename = fname
+                print(f"Found alternative file: {file_path}")
+                break
+        else:
+            raise HTTPException(status_code=404, detail=f"File not found: {cleaned_filename}")
+
+    return FileResponse(
+        path=file_path,
+        filename=cleaned_filename,
+        media_type="application/octet-stream"
+    )
