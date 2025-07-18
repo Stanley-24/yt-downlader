@@ -9,6 +9,7 @@ from typing import List
 from fastapi.responses import FileResponse
 from fastapi import Query
 import urllib.parse
+import tempfile
 main_loop = asyncio.get_event_loop()
 
 app = FastAPI()
@@ -31,6 +32,24 @@ class MetadataRequest(BaseModel):
 
 # Store websocket connections
 progress_connections = set()
+
+def get_cookies_path():
+    """Get cookies from environment variable or local file"""
+    # First try environment variable (production)
+    cookies_env = os.getenv('YOUTUBE_COOKIES')
+    if cookies_env:
+        # Create temporary file from environment variable
+        temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
+        temp_file.write(cookies_env)
+        temp_file.close()
+        return temp_file.name
+    
+    # Fallback to local file (development)
+    from youtube_downloader import COOKIES_PATH
+    if os.path.exists(COOKIES_PATH):
+        return COOKIES_PATH
+    
+    return None
 
 @app.websocket("/ws/progress")
 async def websocket_progress(websocket: WebSocket):
@@ -87,9 +106,9 @@ async def download_video(req: DownloadRequest):
                 'noplaylist': True,
                 'progress_hooks': [sync_progress_hook],
             }
-            from youtube_downloader import COOKIES_PATH
-            if os.path.exists(COOKIES_PATH):
-                ydl_opts['cookiefile'] = COOKIES_PATH  # type: ignore
+            cookies_path = get_cookies_path()
+            if cookies_path:
+                ydl_opts['cookiefile'] = cookies_path  # type: ignore
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
         try:
@@ -121,14 +140,13 @@ async def download_video(req: DownloadRequest):
 @app.post("/metadata")
 async def get_metadata(req: MetadataRequest):
     try:
-        import os
-        from youtube_downloader import COOKIES_PATH
         ydl_opts = {'quiet': True}
-        if os.path.exists(COOKIES_PATH):
-            print(f"Using cookies file at: {COOKIES_PATH}")  # Diagnostic log
-            ydl_opts['cookiefile'] = COOKIES_PATH  # type: ignore
+        cookies_path = get_cookies_path()
+        if cookies_path:
+            print(f"Using cookies from: {'environment variable' if os.getenv('YOUTUBE_COOKIES') else 'local file'}")  # Diagnostic log
+            ydl_opts['cookiefile'] = cookies_path  # type: ignore
         else:
-            print(f"Cookies file not found at: {COOKIES_PATH}")  # Diagnostic log
+            print("No cookies available - some videos may not work")  # Diagnostic log
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(req.url, download=False)
             if info is None:
