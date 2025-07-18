@@ -35,6 +35,10 @@ progress_connections = set()
 
 def get_cookies_path():
     """Get cookies from environment variable or local file"""
+    # Temporarily disable cookies to fix the JSON format issue
+    # TODO: Fix cookie format and re-enable
+    return None
+    
     # First try environment variable (production)
     cookies_env = os.getenv('YOUTUBE_COOKIES')
     if cookies_env:
