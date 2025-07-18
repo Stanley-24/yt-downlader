@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Form
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi import Query
 import urllib.parse
 import tempfile
+import shutil
 main_loop = asyncio.get_event_loop()
 
 app = FastAPI()
@@ -33,27 +34,72 @@ class MetadataRequest(BaseModel):
 # Store websocket connections
 progress_connections = set()
 
-def get_cookies_path():
-    """Get cookies from environment variable or local file"""
-    # Temporarily disable cookies to fix the JSON format issue
-    # TODO: Fix cookie format and re-enable
-    return None
+# Cookie management
+COOKIES_DIR = "cookies"
+os.makedirs(COOKIES_DIR, exist_ok=True)
+
+@app.post("/upload-cookies")
+async def upload_cookies(cookies_file: UploadFile = File(...)):
+    """Upload cookies file for YouTube authentication"""
+    try:
+        # Validate file type
+        if not cookies_file.filename or not cookies_file.filename.endswith('.txt'):
+            raise HTTPException(status_code=400, detail="Only .txt files are allowed")
+        
+        # Save cookies file
+        cookies_path = os.path.join(COOKIES_DIR, "user_cookies.txt")
+        
+        with open(cookies_path, "wb") as buffer:
+            shutil.copyfileobj(cookies_file.file, buffer)
+        
+        return {"message": "Cookies uploaded successfully", "status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload cookies: {str(e)}")
+
+@app.get("/cookies-status")
+async def get_cookies_status():
+    """Check if cookies file exists"""
+    env_cookies = os.getenv('YOUTUBE_COOKIES')
+    user_cookies = os.path.join(COOKIES_DIR, "user_cookies.txt")
+    local_cookies = os.path.join(os.path.dirname(__file__), 'cookies.txt')
     
+    has_env = bool(env_cookies)
+    has_user = os.path.exists(user_cookies)
+    has_local = os.path.exists(local_cookies)
+    
+    return {
+        "cookies_available": has_env or has_user or has_local,
+        "environment_cookies": has_env,
+        "user_cookies": has_user,
+        "local_cookies": has_local,
+        "message": "Cookies are available" if (has_env or has_user or has_local) else "No cookies uploaded"
+    }
+
+def get_cookies_path():
+    """Get cookies from environment variable, user upload, or local file"""
     # First try environment variable (production)
     cookies_env = os.getenv('YOUTUBE_COOKIES')
     if cookies_env:
-        # Remove the YOUTUBE_COOKIES="..." wrapper if present
-        if cookies_env.startswith('YOUTUBE_COOKIES="') and cookies_env.endswith('"'):
-            cookies_env = cookies_env[16:-1]  # Remove YOUTUBE_COOKIES=" and trailing "
-        
-        # Unescape the content
-        cookies_content = cookies_env.replace('\\n', '\n').replace('\\"', '"')
-        
-        # Create temporary file from environment variable
-        temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
-        temp_file.write(cookies_content)
-        temp_file.close()
-        return temp_file.name
+        try:
+            # Remove the YOUTUBE_COOKIES="..." wrapper if present
+            if cookies_env.startswith('YOUTUBE_COOKIES="') and cookies_env.endswith('"'):
+                cookies_env = cookies_env[16:-1]  # Remove YOUTUBE_COOKIES=" and trailing "
+            
+            # Unescape the content
+            cookies_content = cookies_env.replace('\\n', '\n').replace('\\"', '"')
+            
+            # Create temporary file from environment variable
+            temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
+            temp_file.write(cookies_content)
+            temp_file.close()
+            return temp_file.name
+        except Exception as e:
+            print(f"Error processing environment cookies: {e}")
+    
+    # Second try user-uploaded cookies
+    user_cookies = os.path.join(COOKIES_DIR, "user_cookies.txt")
+    if os.path.exists(user_cookies):
+        return user_cookies
     
     # Fallback to local file (development)
     from youtube_downloader import COOKIES_PATH
@@ -61,6 +107,25 @@ def get_cookies_path():
         return COOKIES_PATH
     
     return None
+
+def handle_yt_dlp_error(error_msg):
+    """Handle yt-dlp errors and return user-friendly messages"""
+    error_lower = error_msg.lower()
+    
+    if "sign in to confirm you're not a bot" in error_lower:
+        return "Sign-in required for this video. Please upload YouTube cookies to download age-restricted content."
+    elif "sign in" in error_lower and "bot" in error_lower:
+        return "Authentication required. Please upload YouTube cookies to access this video."
+    elif "private" in error_lower:
+        return "This video is private and requires authentication."
+    elif "age restricted" in error_lower:
+        return "This video is age-restricted. Please upload YouTube cookies to download it."
+    elif "cookies" in error_lower and "netscape" in error_lower:
+        return "Cookie format error. Please use the correct Netscape format cookies."
+    elif "unavailable" in error_lower:
+        return "This video is unavailable in your region or requires authentication."
+    else:
+        return f"Download failed: {error_msg}"
 
 @app.websocket("/ws/progress")
 async def websocket_progress(websocket: WebSocket):
@@ -145,7 +210,9 @@ async def download_video(req: DownloadRequest):
             else:
                 results.append({"url": url, "status": "error", "reason": "Merged file not found"})
         except Exception as e:
-            results.append({"url": url, "status": "error", "error": str(e)})
+            error_msg = str(e)
+            friendly_error = handle_yt_dlp_error(error_msg)
+            results.append({"url": url, "status": "error", "error": friendly_error})
     return {"status": "completed", "results": results}
 
 @app.post("/metadata")
@@ -167,8 +234,10 @@ async def get_metadata(req: MetadataRequest):
                 'thumbnail': info.get('thumbnail', '')
             }
     except Exception as e:
-        print(f"yt-dlp error: {e}")  # Add this for extra debugging
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = str(e)
+        print(f"yt-dlp error: {error_msg}")  # Add this for extra debugging
+        friendly_error = handle_yt_dlp_error(error_msg)
+        raise HTTPException(status_code=500, detail=friendly_error)
 
 
 DOWNLOAD_DIR = "downloads"
