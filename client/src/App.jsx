@@ -52,7 +52,7 @@ const COLOR_OPTIONS = [
   { name: 'Orange', value: orange },
 ];
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "https://yt-downlader-hujz.onrender.com";
 
 function App() {
   const [urlInput, setUrlInput] = useState('');
@@ -197,7 +197,7 @@ function App() {
   // WebSocket for progress
   useEffect(() => {
     if (wsRef.current) return; // Only connect once
-    const ws = new window.WebSocket('ws://localhost:8000/ws/progress');
+    const ws = new window.WebSocket('wss://yt-downlader-hujz.onrender.com/ws/progress');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.url) {
