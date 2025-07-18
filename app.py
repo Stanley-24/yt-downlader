@@ -77,35 +77,23 @@ async def get_cookies_status():
 
 def get_cookies_path():
     """Get cookies from environment variable, user upload, or local file"""
-    # First try environment variable (production)
-    cookies_env = os.getenv('YOUTUBE_COOKIES')
-    if cookies_env:
-        try:
-            # Remove the YOUTUBE_COOKIES="..." wrapper if present
-            if cookies_env.startswith('YOUTUBE_COOKIES="') and cookies_env.endswith('"'):
-                cookies_env = cookies_env[16:-1]  # Remove YOUTUBE_COOKIES=" and trailing "
-            
-            # Unescape the content
-            cookies_content = cookies_env.replace('\\n', '\n').replace('\\"', '"')
-            
-            # Create temporary file from environment variable
-            temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
-            temp_file.write(cookies_content)
-            temp_file.close()
-            return temp_file.name
-        except Exception as e:
-            print(f"Error processing environment cookies: {e}")
+    # Temporarily disable environment cookies due to JSON format issue
+    # TODO: Fix cookie format and re-enable
+    print("Environment cookies temporarily disabled - using user uploads or local files only")
     
-    # Second try user-uploaded cookies
+    # Try user-uploaded cookies
     user_cookies = os.path.join(COOKIES_DIR, "user_cookies.txt")
     if os.path.exists(user_cookies):
+        print("Using user-uploaded cookies")
         return user_cookies
     
     # Fallback to local file (development)
     from youtube_downloader import COOKIES_PATH
     if os.path.exists(COOKIES_PATH):
+        print("Using local cookies file")
         return COOKIES_PATH
     
+    print("No cookies available - some videos may not work")
     return None
 
 def handle_yt_dlp_error(error_msg):
