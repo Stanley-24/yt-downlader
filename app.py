@@ -165,14 +165,12 @@ async def download_video(req: DownloadRequest):
             
             # Custom progress hook that handles "already downloaded" case
             def custom_progress_hook(d):
-                print(f"Progress hook: {d}")  # Debug log
                 if d['status'] == 'downloading':
                     sync_progress_hook(d)
                 elif d['status'] == 'finished':
                     sync_progress_hook(d)
                 elif d['status'] == 'info':
                     info_msg = d.get('_default_template', '')
-                    print(f"Info message: {info_msg}")  # Debug log
                     if 'has already been downloaded' in info_msg:
                         # Handle "already downloaded" case
                         print(f"Video already downloaded: {info_msg}")
@@ -188,7 +186,7 @@ async def download_video(req: DownloadRequest):
                             'url': url,
                             'already_downloaded': True
                         }
-                        print(f"Sending finished message: {finished_msg}")  # Debug log
+                        print(f"Sending finished message: {finished_msg}")
                         asyncio.run_coroutine_threadsafe(
                             progress_hook(finished_msg), main_loop
                         )
@@ -208,9 +206,6 @@ async def download_video(req: DownloadRequest):
                 ydl.download([url])
         try:
             await asyncio.to_thread(download_with_hook, url, req.download_dir)
-            
-            # Wait a moment for any pending progress messages
-            await asyncio.sleep(0.5)
             
             # Find the merged .mp4 file in the download_dir
             mp4_files = []

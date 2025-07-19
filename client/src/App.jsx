@@ -145,9 +145,13 @@ function App() {
     if (h) setHistory(JSON.parse(h));
   }, []);
 
-  // Save history to localStorage
+  // Save history to localStorage (debounced to prevent excessive writes)
   useEffect(() => {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    const timeoutId = setTimeout(() => {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    }, 1000); // Save after 1 second of no changes
+    
+    return () => clearTimeout(timeoutId);
   }, [history]);
 
   // Parse URLs whenever urlInput changes
@@ -200,28 +204,36 @@ function App() {
     const ws = new window.WebSocket('wss://yt-downlader-hujz.onrender.com/ws/progress');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log('WebSocket message received:', data); // Debug log
+      
       if (data.url) {
         setProgressMap(prev => ({
           ...prev,
           [data.url]: data
         }));
       }
+      
       if (data.status === 'downloading') {
         setProgress(data);
       } else if (data.status === 'finished') {
-        setHistory(prev => [
-          {
-            title: data.title || '',
-            thumbnail: data.thumbnail || '',
-            url: data.url,
-            downloadDir: data.downloadDir || downloadDirRef.current,
-            date: new Date().toISOString(),
-            status: 'Completed',
-            filename: data.filename || '',
-          },
-          ...prev
-        ]);
+        console.log('Download finished, updating history:', data); // Debug log
+        const newHistoryItem = {
+          title: data.title || '',
+          thumbnail: data.thumbnail || '',
+          url: data.url,
+          downloadDir: data.downloadDir || downloadDirRef.current,
+          date: new Date().toISOString(),
+          status: 'Completed',
+          filename: data.filename || '',
+        };
+        
+        setHistory(prev => [newHistoryItem, ...prev]);
         setProgress(null);
+        
+        // Immediately open modal for finished downloads
+        console.log('Opening modal immediately for finished download'); // Debug log
+        setDownloadModal({ open: true, video: newHistoryItem });
+        fetchVideoMetadata(data.url);
       }
     };
     wsRef.current = ws;
@@ -240,19 +252,17 @@ function App() {
 
   // Show notification when a download finishes or errors
   useEffect(() => {
-    Object.values(progressMap).forEach((p) => {
-      if (p && p.status === 'finished' && !p._notified) {
+    const finishedDownloads = Object.values(progressMap).filter(p => 
+      p && p.status === 'finished' && !p._notified
+    );
+    
+    finishedDownloads.forEach((p) => {
+      if (window.Notification && Notification.permission === 'granted') {
         new window.Notification('Download Complete', {
           body: p.filename ? p.filename : p.url,
         });
-        p._notified = true;
       }
-      if (p && p.status === 'error' && !p._notified) {
-        new window.Notification('Download Failed', {
-          body: p.filename ? p.filename : p.url,
-        });
-        p._notified = true;
-      }
+      p._notified = true;
     });
   }, [progressMap]);
 
@@ -482,9 +492,10 @@ function App() {
     
     if (completedVideos.length > 0) {
       const latestVideo = completedVideos[completedVideos.length - 1];
-      // Check if this is a new completion (within last 5 seconds)
+      // Check if this is a new completion (within last 10 seconds)
       const videoAge = Date.now() - new Date(latestVideo.date).getTime();
-      if (videoAge < 5000) { // 5 seconds
+      if (videoAge < 10000) { // 10 seconds
+        console.log('Opening modal for video:', latestVideo); // Debug log
         setDownloadModal({ open: true, video: latestVideo });
         // Fetch video metadata for thumbnail
         fetchVideoMetadata(latestVideo.url);
