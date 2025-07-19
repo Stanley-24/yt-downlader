@@ -1095,15 +1095,23 @@ function App() {
         onClose={() => setDownloadModal({ open: false, video: null })}
         maxWidth="md"
         fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            margin: { xs: 2, sm: 4 },
+            maxHeight: { xs: 'calc(100% - 32px)', sm: 'calc(100% - 64px)' },
+          }
+        }}
         PaperProps={{
           sx: {
             background: 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(10px)',
-            borderRadius: '16px',
+            borderRadius: { xs: '12px', sm: '16px' },
             boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
             transform: downloadModal.open ? 'scale(1)' : 'scale(0.9)',
             opacity: downloadModal.open ? 1 : 0,
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            width: { xs: '100%', sm: 'auto' },
+            maxWidth: { xs: '100%', sm: '600px' },
           }
         }}
         BackdropProps={{
@@ -1118,9 +1126,9 @@ function App() {
           pb: 1,
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          borderRadius: '16px 16px 0 0'
+          borderRadius: { xs: '12px 12px 0 0', sm: '16px 16px 0 0' }
         }}>
-          <Typography variant="h5" component="div" sx={{ fontWeight: 600 }}>
+          <Typography variant="h5" component="div" sx={{ fontWeight: 600, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
             🎬 Video Ready!
           </Typography>
         </DialogTitle>
@@ -1130,10 +1138,10 @@ function App() {
                              {/* Video Thumbnail/Preview */}
                <Box sx={{ 
                  position: 'relative', 
-                 maxWidth: 500, 
+                 maxWidth: { xs: '100%', sm: 500 }, 
                  mx: 'auto', 
                  mb: 3,
-                 borderRadius: '12px',
+                 borderRadius: { xs: '8px', sm: '12px' },
                  overflow: 'hidden',
                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
                  transform: downloadModal.open ? 'scale(1)' : 'scale(0.95)',
@@ -1146,9 +1154,9 @@ function App() {
                      alt={downloadModal.video.title}
                      style={{ 
                        width: "100%", 
-                       height: "280px",
+                       height: isMobile ? "200px" : "280px",
                        objectFit: "cover",
-                       borderRadius: "12px"
+                       borderRadius: isMobile ? "8px" : "12px"
                      }}
                    />
                  ) : downloadModal.video.thumbnail ? (
@@ -1157,20 +1165,20 @@ function App() {
                      alt={downloadModal.video.title}
                      style={{ 
                        width: "100%", 
-                       height: "280px",
+                       height: isMobile ? "200px" : "280px",
                        objectFit: "cover",
-                       borderRadius: "12px"
+                       borderRadius: isMobile ? "8px" : "12px"
                      }}
                    />
                  ) : (
                    <Box sx={{
                      width: "100%",
-                     height: "280px",
+                     height: isMobile ? "200px" : "280px",
                      background: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)`,
                      display: 'flex',
                      alignItems: 'center',
                      justifyContent: 'center',
-                     borderRadius: '12px'
+                     borderRadius: isMobile ? '8px' : '12px'
                    }}>
                      <Typography variant="h4" color="white">
                        🎥

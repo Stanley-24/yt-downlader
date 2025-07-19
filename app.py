@@ -165,23 +165,33 @@ async def download_video(req: DownloadRequest):
             
             # Custom progress hook that handles "already downloaded" case
             def custom_progress_hook(d):
+                print(f"Progress hook: {d}")  # Debug log
                 if d['status'] == 'downloading':
                     sync_progress_hook(d)
                 elif d['status'] == 'finished':
                     sync_progress_hook(d)
-                elif d['status'] == 'info' and 'has already been downloaded' in d.get('_default_template', ''):
-                    # Handle "already downloaded" case
-                    print(f"Video already downloaded: {d.get('_default_template', '')}")
-                    # Send finished message for already downloaded files
-                    finished_msg = {
-                        'status': 'finished', 
-                        'filename': d.get('_default_template', '').split(' has already been downloaded')[0],
-                        'url': url,
-                        'already_downloaded': True
-                    }
-                    asyncio.run_coroutine_threadsafe(
-                        progress_hook(finished_msg), main_loop
-                    )
+                elif d['status'] == 'info':
+                    info_msg = d.get('_default_template', '')
+                    print(f"Info message: {info_msg}")  # Debug log
+                    if 'has already been downloaded' in info_msg:
+                        # Handle "already downloaded" case
+                        print(f"Video already downloaded: {info_msg}")
+                        # Extract filename from the message
+                        filename = info_msg.split(' has already been downloaded')[0]
+                        if filename.startswith('downloads/'):
+                            filename = filename[11:]  # Remove 'downloads/' prefix
+                        
+                        # Send finished message for already downloaded files
+                        finished_msg = {
+                            'status': 'finished', 
+                            'filename': filename,
+                            'url': url,
+                            'already_downloaded': True
+                        }
+                        print(f"Sending finished message: {finished_msg}")  # Debug log
+                        asyncio.run_coroutine_threadsafe(
+                            progress_hook(finished_msg), main_loop
+                        )
             
             ydl_opts = {
                 'format': 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best',
