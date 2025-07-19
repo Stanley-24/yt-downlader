@@ -162,13 +162,34 @@ async def download_video(req: DownloadRequest):
             asyncio.run_coroutine_threadsafe(progress_hook(d), main_loop)
         def download_with_hook(url, download_dir):
             os.makedirs(download_dir, exist_ok=True)
+            
+            # Custom progress hook that handles "already downloaded" case
+            def custom_progress_hook(d):
+                if d['status'] == 'downloading':
+                    sync_progress_hook(d)
+                elif d['status'] == 'finished':
+                    sync_progress_hook(d)
+                elif d['status'] == 'info' and 'has already been downloaded' in d.get('_default_template', ''):
+                    # Handle "already downloaded" case
+                    print(f"Video already downloaded: {d.get('_default_template', '')}")
+                    # Send finished message for already downloaded files
+                    finished_msg = {
+                        'status': 'finished', 
+                        'filename': d.get('_default_template', '').split(' has already been downloaded')[0],
+                        'url': url,
+                        'already_downloaded': True
+                    }
+                    asyncio.run_coroutine_threadsafe(
+                        progress_hook(finished_msg), main_loop
+                    )
+            
             ydl_opts = {
                 'format': 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best',
                 'merge_output_format': 'mp4',
                 'outtmpl': os.path.join(download_dir, '%(title)s.%(ext)s'),
                 'quiet': False,
                 'noplaylist': True,
-                'progress_hooks': [sync_progress_hook],
+                'progress_hooks': [custom_progress_hook],
             }
             cookies_path = get_cookies_path()
             if cookies_path:
@@ -177,6 +198,10 @@ async def download_video(req: DownloadRequest):
                 ydl.download([url])
         try:
             await asyncio.to_thread(download_with_hook, url, req.download_dir)
+            
+            # Wait a moment for any pending progress messages
+            await asyncio.sleep(0.5)
+            
             # Find the merged .mp4 file in the download_dir
             mp4_files = []
             for fname in os.listdir(req.download_dir):
@@ -189,6 +214,15 @@ async def download_video(req: DownloadRequest):
             if mp4_files:
                 # Use the most recent .mp4 file (should be the merged one)
                 merged_file = mp4_files[0]
+                
+                # Send a final "finished" message if it wasn't sent by progress hook
+                final_msg = {'status': 'finished', 'filename': merged_file, 'url': url}
+                for ws in list(progress_connections):
+                    try:
+                        await ws.send_json(final_msg)
+                    except Exception:
+                        progress_connections.remove(ws)
+                
                 results.append({
                     "url": url,
                     "status": "success",
