@@ -72,6 +72,10 @@ function App() {
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const isMdUp = useMediaQuery(muiTheme.breakpoints.up('md'));
   const isWide = useMediaQuery('(min-width:658px)');
+  
+  // Enhanced mobile detection
+  const isRealMobile = useMediaQuery('(max-width:768px) and (orientation: portrait)');
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   const [sidebarOpen, setSidebarOpen] = useState(isWide);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -234,6 +238,17 @@ function App() {
         console.log('Opening modal immediately for finished download'); // Debug log
         setDownloadModal({ open: true, video: newHistoryItem });
         fetchVideoMetadata(data.url);
+        
+        // Force modal opening for mobile devices
+        if (isRealMobile || isTouchDevice) {
+          console.log('Mobile device detected, ensuring modal opens');
+          setTimeout(() => {
+            if (!downloadModal.open) {
+              console.log('Forcing modal open for mobile');
+              setDownloadModal({ open: true, video: newHistoryItem });
+            }
+          }, 100);
+        }
       }
     };
     wsRef.current = ws;
@@ -502,6 +517,14 @@ function App() {
       }
     }
   }, [history]);
+
+  // Mobile-specific modal opening
+  useEffect(() => {
+    if ((isRealMobile || isTouchDevice) && downloadModal.video && !downloadModal.open) {
+      console.log('Mobile: Ensuring modal is open for video:', downloadModal.video);
+      setDownloadModal(prev => ({ ...prev, open: true }));
+    }
+  }, [downloadModal.video, downloadModal.open, isRealMobile, isTouchDevice]);
 
   // Fetch video metadata for thumbnail
   const fetchVideoMetadata = async (url) => {
@@ -1106,28 +1129,40 @@ function App() {
         onClose={() => setDownloadModal({ open: false, video: null })}
         maxWidth="md"
         fullWidth
+        disableScrollLock={false}
+        keepMounted={false}
         sx={{
           '& .MuiDialog-paper': {
-            margin: { xs: 2, sm: 4 },
-            maxHeight: { xs: 'calc(100% - 32px)', sm: 'calc(100% - 64px)' },
+            margin: { xs: 1, sm: 4 },
+            maxHeight: { xs: 'calc(100vh - 16px)', sm: 'calc(100% - 64px)' },
+            height: { xs: 'auto', sm: 'auto' },
+            minHeight: { xs: 'auto', sm: 'auto' },
+          },
+          '& .MuiBackdrop-root': {
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
           }
         }}
         PaperProps={{
           sx: {
-            background: 'rgba(255, 255, 255, 0.95)',
+            background: 'rgba(255, 255, 255, 0.98)',
             backdropFilter: 'blur(10px)',
-            borderRadius: { xs: '12px', sm: '16px' },
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+            borderRadius: { xs: '8px', sm: '16px' },
+            boxShadow: { xs: '0 10px 30px rgba(0, 0, 0, 0.3)', sm: '0 20px 40px rgba(0, 0, 0, 0.1)' },
             transform: downloadModal.open ? 'scale(1)' : 'scale(0.9)',
             opacity: downloadModal.open ? 1 : 0,
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            width: { xs: '100%', sm: 'auto' },
-            maxWidth: { xs: '100%', sm: '600px' },
+            width: { xs: 'calc(100vw - 16px)', sm: 'auto' },
+            maxWidth: { xs: 'calc(100vw - 16px)', sm: '600px' },
+            position: { xs: 'fixed', sm: 'relative' },
+            top: { xs: '8px', sm: 'auto' },
+            left: { xs: '8px', sm: 'auto' },
+            right: { xs: '8px', sm: 'auto' },
+            bottom: { xs: 'auto', sm: 'auto' },
           }
         }}
         BackdropProps={{
           sx: {
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
             backdropFilter: 'blur(4px)',
           }
         }}
@@ -1143,7 +1178,7 @@ function App() {
             🎬 Video Ready!
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ p: 3 }}>
+        <DialogContent sx={{ p: { xs: 2, sm: 3 }, maxHeight: { xs: '60vh', sm: 'none' }, overflow: 'auto' }}>
           {downloadModal.video && (
             <Box sx={{ textAlign: 'center' }}>
                              {/* Video Thumbnail/Preview */}
@@ -1165,9 +1200,9 @@ function App() {
                      alt={downloadModal.video.title}
                      style={{ 
                        width: "100%", 
-                       height: isMobile ? "200px" : "280px",
+                       height: isMobile ? "180px" : "280px",
                        objectFit: "cover",
-                       borderRadius: isMobile ? "8px" : "12px"
+                       borderRadius: isMobile ? "6px" : "12px"
                      }}
                    />
                  ) : downloadModal.video.thumbnail ? (
@@ -1176,20 +1211,20 @@ function App() {
                      alt={downloadModal.video.title}
                      style={{ 
                        width: "100%", 
-                       height: isMobile ? "200px" : "280px",
+                       height: isMobile ? "180px" : "280px",
                        objectFit: "cover",
-                       borderRadius: isMobile ? "8px" : "12px"
+                       borderRadius: isMobile ? "6px" : "12px"
                      }}
                    />
                  ) : (
                    <Box sx={{
                      width: "100%",
-                     height: isMobile ? "200px" : "280px",
+                     height: isMobile ? "180px" : "280px",
                      background: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)`,
                      display: 'flex',
                      alignItems: 'center',
                      justifyContent: 'center',
-                     borderRadius: isMobile ? '8px' : '12px'
+                     borderRadius: isMobile ? '6px' : '12px'
                    }}>
                      <Typography variant="h4" color="white">
                        🎥
